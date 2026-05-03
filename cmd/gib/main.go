@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"os"
 
-	gameengine "github.com/nasermirzaei89/game-engine"
+	"github.com/nasermirzaei89/gib"
 )
 
 func main() {
-	err := gameengine.Run()
+	err := gib.Run()
 	if err != nil {
 		slog.Error("Error running game engine", "error", err)
 		os.Exit(1)

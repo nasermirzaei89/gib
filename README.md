@@ -1,4 +1,4 @@
-# Game Engine
+# Gib Game Engine
 
 A Lua-driven 2D game engine prototype built with Go and SDL3.
 

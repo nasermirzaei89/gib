@@ -1,4 +1,4 @@
-package gameengine
+package gib
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"

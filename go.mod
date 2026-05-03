@@ -1,4 +1,4 @@
-module github.com/nasermirzaei89/game-engine
+module github.com/nasermirzaei89/gib
 
 go 1.26.1
 

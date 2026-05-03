@@ -1,4 +1,4 @@
-package gameengine
+package gib
 
 import (
 	"image"

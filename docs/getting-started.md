@@ -10,7 +10,7 @@
 From the project root:
 
 ```bash
-go run cmd/engine/main.go
+go run cmd/gib/main.go
 ```
 
 Behavior:
@@ -27,7 +27,7 @@ If no-arg mode does not find `main.lua`, the engine starts an empty window.
 make build
 ```
 
-This creates `bin/engine`.
+This creates `bin/gib`.
 
 ## Minimal Script
 
@@ -40,7 +40,7 @@ end
 Run it:
 
 ```bash
-go run cmd/engine/main.go ./path/to/main.lua
+go run cmd/gib/main.go ./path/to/main.lua
 ```
 
 ## Next
