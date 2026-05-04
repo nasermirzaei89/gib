@@ -203,6 +203,20 @@ func Run() error {
 				if keyboardEvent := event.KeyboardEvent(); keyboardEvent != nil {
 					inputState.setKeyUp(keyboardEvent.Scancode)
 				}
+			case sdl.EVENT_MOUSE_MOTION:
+				if mouseMotionEvent := event.MouseMotionEvent(); mouseMotionEvent != nil {
+					inputState.setMousePosition(mouseMotionEvent.X, mouseMotionEvent.Y)
+				}
+			case sdl.EVENT_MOUSE_BUTTON_DOWN:
+				if mouseButtonEvent := event.MouseButtonEvent(); mouseButtonEvent != nil {
+					inputState.setMousePosition(mouseButtonEvent.X, mouseButtonEvent.Y)
+					inputState.setMouseButtonDown(mouseButtonEvent.Button)
+				}
+			case sdl.EVENT_MOUSE_BUTTON_UP:
+				if mouseButtonEvent := event.MouseButtonEvent(); mouseButtonEvent != nil {
+					inputState.setMousePosition(mouseButtonEvent.X, mouseButtonEvent.Y)
+					inputState.setMouseButtonUp(mouseButtonEvent.Button)
+				}
 			case sdl.EVENT_WINDOW_FOCUS_LOST:
 				inputState.clearAll()
 			}
@@ -228,6 +242,12 @@ func Run() error {
 			case sdl.EVENT_KEY_DOWN:
 				fallthrough
 			case sdl.EVENT_KEY_UP:
+				fallthrough
+			case sdl.EVENT_MOUSE_MOTION:
+				fallthrough
+			case sdl.EVENT_MOUSE_BUTTON_DOWN:
+				fallthrough
+			case sdl.EVENT_MOUSE_BUTTON_UP:
 				fallthrough
 			case sdl.EVENT_WINDOW_FOCUS_LOST:
 				// Handled above for input-state updates.

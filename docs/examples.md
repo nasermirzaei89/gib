@@ -27,6 +27,17 @@ Shows keyboard movement using:
 - `input.is_key_down`
 - source-rect drawing for animated sprites
 
+## input-mouse
+
+Path: `examples/input-mouse/main.lua`
+
+Shows mouse position and edge-triggered button input using:
+
+- `input.get_mouse_position`
+- `input.is_mouse_button_down`
+- `input.is_mouse_button_pressed`
+- `input.is_mouse_button_released`
+
 ## events
 
 Path: `examples/events/main.lua`
