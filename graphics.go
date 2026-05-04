@@ -19,6 +19,8 @@ const imageMetatableName = "graphics.image"
 
 type Image struct {
 	texture  *sdl.Texture
+	width    int32
+	height   int32
 	released bool
 }
 
@@ -86,6 +88,19 @@ func releaseLuaImage(img *Image) {
 // Graphics module is responsible rendering.
 func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 	mt := l.NewTypeMetatable(imageMetatableName)
+	imageMethods := l.NewTable()
+	imageMethods.RawSetString("get_size", l.NewFunction(func(L *lua.LState) int {
+		img := checkLuaImage(L, 1)
+		if img.released || img.texture == nil {
+			L.RaiseError("graphics.image:get_size: image has been unloaded")
+			return 0
+		}
+
+		L.Push(lua.LNumber(img.width))
+		L.Push(lua.LNumber(img.height))
+		return 2
+	}))
+	mt.RawSetString("__index", imageMethods)
 	mt.RawSetString("__gc", l.NewFunction(func(L *lua.LState) int {
 		img := checkLuaImage(L, 1)
 		releaseLuaImage(img)
@@ -120,7 +135,7 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 		}
 
 		ud := L.NewUserData()
-		ud.Value = &Image{texture: texture}
+		ud.Value = &Image{texture: texture, width: texture.W, height: texture.H}
 		L.SetMetatable(ud, L.GetTypeMetatable(imageMetatableName))
 		L.Push(ud)
 

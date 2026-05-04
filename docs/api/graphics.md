@@ -13,6 +13,16 @@ Notes:
 - Supports BMP, PNG, and JPEG.
 - Relative paths are resolved from script base directory.
 
+The returned image userdata provides this method:
+
+```lua
+local width, height = image:get_size()
+```
+
+Returns image dimensions in integer pixels.
+
+Calling `image:get_size()` after `graphics.unload_image(image)` raises an error.
+
 ## unload_image(image)
 
 ```lua
