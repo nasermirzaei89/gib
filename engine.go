@@ -110,6 +110,11 @@ func Run() error {
 		return fmt.Errorf("failed to create window and renderer: %w", err)
 	}
 
+	err = renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
+	if err != nil {
+		return fmt.Errorf("failed to set renderer draw blend mode: %w", err)
+	}
+
 	var game *lua.LTable
 	if scriptLoaded {
 		ret := L.Get(-1)

@@ -12,6 +12,15 @@ Path: `examples/render-image/main.lua`
 
 Shows image loading with `graphics.load_image` and drawing with `graphics.draw_image`.
 
+## draw-shapes
+
+Path: `examples/draw-shapes/main.lua`
+
+Shows primitive shape rendering using:
+
+- `graphics.draw_rect`
+- `graphics.draw_line`
+
 ## animation
 
 Path: `examples/animation/main.lua`
