@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Zyko0/go-sdl3/bin/binmix"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
+	"github.com/Zyko0/go-sdl3/mixer"
 	"github.com/Zyko0/go-sdl3/sdl"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -98,12 +100,25 @@ func Run() error {
 	}
 
 	defer binsdl.Load().Unload() // sdl.LoadLibrary(sdl.Path())
+	defer binmix.Load().Unload()
 	defer sdl.Quit()
 
-	err := sdl.Init(sdl.INIT_VIDEO)
+	err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
 	if err != nil {
 		return fmt.Errorf("failed to initialize SDL: %w", err)
 	}
+
+	err = mixer.Init()
+	if err != nil {
+		return fmt.Errorf("failed to initialize SDL_mixer: %w", err)
+	}
+	defer mixer.Quit()
+
+	audioMixer, err := mixer.CreateMixerDevice(sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create audio mixer: %w", err)
+	}
+	defer audioMixer.Destroy()
 
 	window, renderer, err := sdl.CreateWindowAndRenderer("Game", 800, 600, 0)
 	if err != nil {
@@ -162,6 +177,8 @@ func Run() error {
 	inputState := newInputState()
 	InitInput(L, inputState)
 	InitGraphics(L, renderer, baseDir)
+	audioState := InitAudio(L, audioMixer, baseDir)
+	defer audioState.Close()
 	quitRequested := false
 	InitWindow(L, window, &quitRequested)
 

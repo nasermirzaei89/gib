@@ -53,6 +53,25 @@ Path: `examples/events/main.lua`
 
 Shows `game.event(event)` usage and logs each incoming event type.
 
+## audio
+
+Path: `examples/audio/main.lua`
+
+Shows unified audio usage with:
+
+- `audio.load`
+- `audio.play`
+- `audio.pause` / `audio.resume`
+- `audio.stop`
+- `audio.set_master_volume` / `audio.get_master_volume`
+
+Controls:
+
+- `P`: pause/resume music
+- `S`: stop music
+- `Space`: play gunshot SFX
+- `Up` / `Down`: change master volume by `0.1`
+
 ## TBD
 
 - Add an example for `is_key_pressed` / `is_key_released` edge-triggered input.

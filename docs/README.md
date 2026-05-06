@@ -11,6 +11,7 @@ This documentation is for Lua users building games with this engine.
 ## API Reference
 
 - [graphics](api/graphics.md)
+- [audio](api/audio.md)
 - [input](api/input.md)
 - [window](api/window.md)
 - [log](api/log.md)
