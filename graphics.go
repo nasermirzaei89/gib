@@ -36,6 +36,11 @@ type transformOptions struct {
 	scale    sdl.FPoint
 }
 
+type graphicsRuntimeState struct {
+	autoClear  bool
+	clearColor sdl.Color
+}
+
 const (
 	defaultCircleSegments  = 48
 	defaultEllipseSegments = 48
@@ -199,6 +204,50 @@ func normalizeColorChannel(component float32) uint8 {
 		return 255
 	}
 	return uint8(math.Round(float64(component * 255)))
+}
+
+func parseNormalizedColorArray(L *lua.LState, fnName string, arg lua.LValue, keyName string) sdl.Color {
+	tbl, ok := arg.(*lua.LTable)
+	if !ok {
+		L.RaiseError("%s: %s must be a table {r, g, b, a}", fnName, keyName)
+		return sdl.Color{}
+	}
+
+	if tbl.Len() != 4 {
+		L.RaiseError("%s: %s must contain exactly 4 values (r, g, b, a)", fnName, keyName)
+		return sdl.Color{}
+	}
+
+	components := [4]float32{}
+	for i := 1; i <= 4; i++ {
+		componentVal := tbl.RawGetInt(i)
+		componentNum, ok := componentVal.(lua.LNumber)
+		if !ok {
+			L.RaiseError("%s: %s value at index %d must be a number", fnName, keyName, i)
+			return sdl.Color{}
+		}
+
+		component := float32(componentNum)
+		if component < 0 || component > 1 {
+			L.RaiseError("%s: %s values must be in range [0, 1]", fnName, keyName)
+			return sdl.Color{}
+		}
+
+		components[i-1] = component
+	}
+
+	return sdl.Color{
+		R: normalizeColorChannel(components[0]),
+		G: normalizeColorChannel(components[1]),
+		B: normalizeColorChannel(components[2]),
+		A: normalizeColorChannel(components[3]),
+	}
+}
+
+func clearRenderer(renderer *sdl.Renderer, color sdl.Color) error {
+	return renderWithColor(renderer, color, func() error {
+		return renderer.Clear()
+	})
 }
 
 func parseShapeOptions(L *lua.LState, fnName string, arg lua.LValue, allowFilled bool) shapeOptions {
@@ -523,7 +572,14 @@ func drawPolygonOutline(renderer *sdl.Renderer, points []sdl.FPoint, closed bool
 
 // InitGraphics registers the graphics module and its functions to the Lua state.
 // Graphics module is responsible rendering.
-func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
+func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string, runtimeState *graphicsRuntimeState) {
+	if runtimeState == nil {
+		runtimeState = &graphicsRuntimeState{
+			autoClear:  true,
+			clearColor: sdl.Color{R: 0, G: 0, B: 0, A: 255},
+		}
+	}
+
 	mt := l.NewTypeMetatable(imageMetatableName)
 	imageMethods := l.NewTable()
 	imageMethods.RawSetString("get_size", l.NewFunction(func(L *lua.LState) int {
@@ -582,6 +638,29 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 	graphics.RawSetString("unload_image", l.NewFunction(func(L *lua.LState) int {
 		img := checkLuaImage(L, 1)
 		releaseLuaImage(img)
+
+		return 0
+	}))
+
+	graphics.RawSetString("clear", l.NewFunction(func(L *lua.LState) int {
+		err := clearRenderer(renderer, runtimeState.clearColor)
+		if err != nil {
+			L.RaiseError("graphics.clear failed: %v", err)
+			return 0
+		}
+
+		return 0
+	}))
+
+	graphics.RawSetString("set_clear_color", l.NewFunction(func(L *lua.LState) int {
+		color := parseNormalizedColorArray(L, "graphics.set_clear_color", L.CheckAny(1), "color")
+		runtimeState.clearColor = color
+
+		return 0
+	}))
+
+	graphics.RawSetString("set_auto_clear", l.NewFunction(func(L *lua.LState) int {
+		runtimeState.autoClear = L.CheckBool(1)
 
 		return 0
 	}))

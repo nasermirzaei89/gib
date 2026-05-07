@@ -13,6 +13,8 @@ function game.config(conf)
     conf.window.title = "My Game"
     conf.window.resizable = true
     conf.window.fullscreen = false
+    conf.graphics.auto_clear = true
+    conf.graphics.clear_color = {0.0, 0.0, 0.0, 1.0}
     conf.tps = 60
 end
 ```
@@ -24,6 +26,8 @@ end
 - `conf.window.height = 600`
 - `conf.window.resizable = false`
 - `conf.window.fullscreen = false`
+- `conf.graphics.auto_clear = true`
+- `conf.graphics.clear_color = {0.0, 0.0, 0.0, 1.0}`
 - `conf.tps = 60`
 
 Validation rules:
@@ -32,6 +36,8 @@ Validation rules:
 - `conf.window.width` and `conf.window.height` must be positive integers.
 - `conf.window.title` must be a string (empty string allowed).
 - `conf.window.resizable` and `conf.window.fullscreen` must be booleans.
+- `conf.graphics.auto_clear` must be a boolean.
+- `conf.graphics.clear_color` must be `{r, g, b, a}` with values in `[0, 1]`.
 
 ## Callback Order Per Frame
 
@@ -39,7 +45,8 @@ Validation rules:
 2. Call `game.event(event)` for each event (if defined).
 3. Run fixed-step updates (`game.fixed_update(fixed_dt)`) at 60 TPS while accumulator allows.
 4. Call `game.update(dt)` once with variable frame delta.
-5. Call `game.render()` once and present the frame.
+5. Auto-clear the frame (if enabled).
+6. Call `game.render()` once and present the frame.
 
 ## Supported Callbacks
 

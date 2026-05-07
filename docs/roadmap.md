@@ -169,7 +169,11 @@ These systems reduce repetitive rendering and camera scaffolding.
 
 ### Background Clear API
 
-Explicit per-frame clear color control.
+Implemented baseline:
+
+- engine clears every frame by default
+- startup config supports `conf.graphics.auto_clear` and `conf.graphics.clear_color`
+- runtime controls: `graphics.clear()`, `graphics.set_clear_color(...)`, `graphics.set_auto_clear(...)`
 
 ### Image Transforms
 

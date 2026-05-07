@@ -31,6 +31,46 @@ graphics.unload_image(image)
 
 Releases texture resources for that image.
 
+## clear()
+
+```lua
+graphics.clear()
+```
+
+Clears the current frame immediately using the active clear color.
+
+Notes:
+
+- This works even when auto-clear is enabled.
+- Useful for explicit multi-pass rendering control.
+
+## set_clear_color(color)
+
+```lua
+graphics.set_clear_color({0.0, 0.0, 0.0, 1.0})
+```
+
+Sets the clear color used by engine auto-clear and `graphics.clear()`.
+
+Validation behavior:
+
+- `color` must be `{r, g, b, a}`.
+- Must contain exactly 4 numeric values in `[0, 1]`.
+
+## set_auto_clear(enabled)
+
+```lua
+graphics.set_auto_clear(true)
+```
+
+Enables or disables automatic frame clearing.
+
+Notes:
+
+- Auto-clear defaults to `true`.
+- When enabled, the engine clears before `game.render()` every frame.
+- Disable for advanced effects like trails or custom accumulation.
+
 ## draw_image(image, x, y, opts?)
 
 ```lua

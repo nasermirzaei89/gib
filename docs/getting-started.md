@@ -46,6 +46,8 @@ function game.config(conf)
     conf.window.title = "My Game"
     conf.window.resizable = true
     conf.window.fullscreen = false
+    conf.graphics.auto_clear = true
+    conf.graphics.clear_color = {0.0, 0.0, 0.0, 1.0}
     conf.tps = 60
 end
 ```

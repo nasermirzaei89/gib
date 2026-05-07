@@ -6,6 +6,7 @@ local t = 0
 function game.load()
     image = graphics.load_image("../assets/leo.png")
     image_width, image_height = image:get_size()
+    graphics.set_clear_color({0.3, 0.3, 0.3, 1.0})
 end
 
 function game.update(dt)

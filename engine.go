@@ -27,9 +27,15 @@ type startupWindowConfig struct {
 	fullscreen bool
 }
 
+type startupGraphicsConfig struct {
+	autoClear  bool
+	clearColor sdl.Color
+}
+
 type startupConfig struct {
-	window startupWindowConfig
-	tps    float64
+	window   startupWindowConfig
+	graphics startupGraphicsConfig
+	tps      float64
 }
 
 func defaultStartupConfig() startupConfig {
@@ -41,8 +47,16 @@ func defaultStartupConfig() startupConfig {
 			resizable:  false,
 			fullscreen: false,
 		},
+		graphics: startupGraphicsConfig{
+			autoClear:  true,
+			clearColor: sdl.Color{R: 0, G: 0, B: 0, A: 255},
+		},
 		tps: defaultTPS,
 	}
+}
+
+func colorChannelToLuaNumber(channel uint8) lua.LNumber {
+	return lua.LNumber(float64(channel) / 255.0)
 }
 
 func startupConfigToLuaTable(L *lua.LState, cfg startupConfig) *lua.LTable {
@@ -53,8 +67,19 @@ func startupConfigToLuaTable(L *lua.LState, cfg startupConfig) *lua.LTable {
 	window.RawSetString("resizable", lua.LBool(cfg.window.resizable))
 	window.RawSetString("fullscreen", lua.LBool(cfg.window.fullscreen))
 
+	clearColor := L.NewTable()
+	clearColor.Append(colorChannelToLuaNumber(cfg.graphics.clearColor.R))
+	clearColor.Append(colorChannelToLuaNumber(cfg.graphics.clearColor.G))
+	clearColor.Append(colorChannelToLuaNumber(cfg.graphics.clearColor.B))
+	clearColor.Append(colorChannelToLuaNumber(cfg.graphics.clearColor.A))
+
+	graphics := L.NewTable()
+	graphics.RawSetString("auto_clear", lua.LBool(cfg.graphics.autoClear))
+	graphics.RawSetString("clear_color", clearColor)
+
 	conf := L.NewTable()
 	conf.RawSetString("window", window)
+	conf.RawSetString("graphics", graphics)
 	conf.RawSetString("tps", lua.LNumber(cfg.tps))
 
 	return conf
@@ -125,6 +150,58 @@ func parseStartupConfig(conf *lua.LTable) (startupConfig, error) {
 		return cfg, fmt.Errorf("game.config(conf): conf.window.fullscreen must be boolean")
 	}
 	cfg.window.fullscreen = bool(fullscreen)
+
+	graphicsVal := conf.RawGetString("graphics")
+	if graphicsVal.Type() != lua.LTNil {
+		graphicsTable, ok := graphicsVal.(*lua.LTable)
+		if !ok {
+			return cfg, fmt.Errorf("game.config(conf): conf.graphics must be table")
+		}
+
+		autoClearVal := graphicsTable.RawGetString("auto_clear")
+		if autoClearVal.Type() != lua.LTNil {
+			autoClear, ok := autoClearVal.(lua.LBool)
+			if !ok {
+				return cfg, fmt.Errorf("game.config(conf): conf.graphics.auto_clear must be boolean")
+			}
+			cfg.graphics.autoClear = bool(autoClear)
+		}
+
+		clearColorVal := graphicsTable.RawGetString("clear_color")
+		if clearColorVal.Type() != lua.LTNil {
+			clearColorTable, ok := clearColorVal.(*lua.LTable)
+			if !ok {
+				return cfg, fmt.Errorf("game.config(conf): conf.graphics.clear_color must be table {r, g, b, a}")
+			}
+
+			if clearColorTable.Len() != 4 {
+				return cfg, fmt.Errorf("game.config(conf): conf.graphics.clear_color must contain exactly 4 values (r, g, b, a)")
+			}
+
+			components := [4]uint8{}
+			for i := 1; i <= 4; i++ {
+				componentVal := clearColorTable.RawGetInt(i)
+				componentNum, ok := componentVal.(lua.LNumber)
+				if !ok {
+					return cfg, fmt.Errorf("game.config(conf): conf.graphics.clear_color value at index %d must be number", i)
+				}
+
+				component := float32(componentNum)
+				if component < 0 || component > 1 {
+					return cfg, fmt.Errorf("game.config(conf): conf.graphics.clear_color values must be in range [0, 1]")
+				}
+
+				components[i-1] = normalizeColorChannel(component)
+			}
+
+			cfg.graphics.clearColor = sdl.Color{
+				R: components[0],
+				G: components[1],
+				B: components[2],
+				A: components[3],
+			}
+		}
+	}
 
 	return cfg, nil
 }
@@ -312,7 +389,11 @@ func Run() error {
 	InitLog(L)
 	inputState := newInputState()
 	InitInput(L, inputState)
-	InitGraphics(L, renderer, baseDir)
+	graphicsState := &graphicsRuntimeState{
+		autoClear:  startupCfg.graphics.autoClear,
+		clearColor: startupCfg.graphics.clearColor,
+	}
+	InitGraphics(L, renderer, baseDir, graphicsState)
 	audioState := InitAudio(L, audioMixer, baseDir)
 	defer audioState.Close()
 	quitRequested := false
@@ -443,6 +524,14 @@ func Run() error {
 			}, lua.LNumber(dt))
 			if err != nil {
 				slog.Error("Failed to call game.update(dt)", "error", err)
+				return err
+			}
+		}
+
+		if graphicsState.autoClear {
+			err := clearRenderer(renderer, graphicsState.clearColor)
+			if err != nil {
+				slog.Error("Failed to clear renderer", "error", err)
 				return err
 			}
 		}
