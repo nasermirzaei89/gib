@@ -1,3 +1,16 @@
-/bin/*
+# Binary files
+/bin/
 
+# Temporary files
+/tmp/
+
+# Go
+/coverage.out
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
 .DS_Store
+Thumbs.db
