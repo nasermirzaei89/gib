@@ -30,6 +30,12 @@ type shapeOptions struct {
 	closed bool
 }
 
+type transformOptions struct {
+	rotation float64
+	origin   sdl.FPoint
+	scale    sdl.FPoint
+}
+
 const (
 	defaultCircleSegments  = 48
 	defaultEllipseSegments = 48
@@ -57,19 +63,108 @@ func checkIntegerField(L *lua.LState, tbl *lua.LTable, key string) int32 {
 	return int32(int64(num))
 }
 
-func getOptionalNumberField(L *lua.LState, tbl *lua.LTable, key string, defaultVal float32) (float32, bool) {
+func getOptionalOptionsTable(L *lua.LState, fnName string, arg lua.LValue) *lua.LTable {
+	if arg.Type() == lua.LTNil {
+		return nil
+	}
+
+	tbl, ok := arg.(*lua.LTable)
+	if !ok {
+		L.RaiseError("%s: options argument must be a table", fnName)
+		return nil
+	}
+
+	return tbl
+}
+
+func parseVec2Option(L *lua.LState, fnName string, tbl *lua.LTable, key string, defaultValue sdl.FPoint) sdl.FPoint {
 	val := tbl.RawGetString(key)
 	if val.Type() == lua.LTNil {
-		return defaultVal, false
+		return defaultValue
 	}
 
-	num, ok := val.(lua.LNumber)
+	vec, ok := val.(*lua.LTable)
 	if !ok {
-		L.RaiseError("graphics.draw_image: option key %q must be a number", key)
-		return 0, true
+		L.RaiseError("%s: options key %q must be a table {x, y}", fnName, key)
+		return defaultValue
 	}
 
-	return float32(num), true
+	if vec.Len() != 2 {
+		L.RaiseError("%s: options key %q must contain exactly 2 values (x, y)", fnName, key)
+		return defaultValue
+	}
+
+	xVal := vec.RawGetInt(1)
+	yVal := vec.RawGetInt(2)
+
+	xNum, ok := xVal.(lua.LNumber)
+	if !ok {
+		L.RaiseError("%s: options key %q value at index 1 must be a number", fnName, key)
+		return defaultValue
+	}
+
+	yNum, ok := yVal.(lua.LNumber)
+	if !ok {
+		L.RaiseError("%s: options key %q value at index 2 must be a number", fnName, key)
+		return defaultValue
+	}
+
+	return sdl.FPoint{X: float32(xNum), Y: float32(yNum)}
+}
+
+func parseTransformOptions(L *lua.LState, fnName string, arg lua.LValue, defaultOrigin sdl.FPoint) transformOptions {
+	opts := transformOptions{
+		origin: defaultOrigin,
+		scale:  sdl.FPoint{X: 1, Y: 1},
+	}
+
+	tbl := getOptionalOptionsTable(L, fnName, arg)
+	if tbl == nil {
+		return opts
+	}
+
+	rotationVal := tbl.RawGetString("rotation")
+	if rotationVal.Type() != lua.LTNil {
+		rotationNum, ok := rotationVal.(lua.LNumber)
+		if !ok {
+			L.RaiseError("%s: options key %q must be a number", fnName, "rotation")
+			return opts
+		}
+		opts.rotation = float64(rotationNum)
+	}
+
+	opts.origin = parseVec2Option(L, fnName, tbl, "origin", opts.origin)
+	opts.scale = parseVec2Option(L, fnName, tbl, "scale", opts.scale)
+
+	return opts
+}
+
+func transformPoint(point sdl.FPoint, opts transformOptions, tx, ty float32) sdl.FPoint {
+	localX := point.X - opts.origin.X
+	localY := point.Y - opts.origin.Y
+
+	scaledX := localX * opts.scale.X
+	scaledY := localY * opts.scale.Y
+
+	cosTheta := float32(math.Cos(opts.rotation))
+	sinTheta := float32(math.Sin(opts.rotation))
+
+	rotatedX := scaledX*cosTheta - scaledY*sinTheta
+	rotatedY := scaledX*sinTheta + scaledY*cosTheta
+
+	return sdl.FPoint{
+		X: tx + opts.origin.X + rotatedX,
+		Y: ty + opts.origin.Y + rotatedY,
+	}
+}
+
+func transformPoints(points []sdl.FPoint, opts transformOptions, tx, ty float32) []sdl.FPoint {
+	transformed := make([]sdl.FPoint, len(points))
+	for i, point := range points {
+		transformed[i] = transformPoint(point, opts, tx, ty)
+	}
+
+	return transformed
 }
 
 func checkLuaImage(L *lua.LState, index int) *Image {
@@ -501,26 +596,20 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 			return 0
 		}
 
+		optsArg := lua.LValue(lua.LNil)
+		if L.GetTop() >= 4 {
+			optsArg = L.Get(4)
+		}
+
+		tbl := getOptionalOptionsTable(L, "graphics.draw_image", optsArg)
+		transformOpts := parseTransformOptions(L, "graphics.draw_image", optsArg, sdl.FPoint{X: 0, Y: 0})
+
 		var src *sdl.FRect
-		dstW := float32(img.texture.W)
-		dstH := float32(img.texture.H)
-		scaleX := float32(1)
-		scaleY := float32(1)
+		baseW := float32(img.texture.W)
+		baseH := float32(img.texture.H)
 		flipMode := sdl.FLIP_NONE
 
-		if L.GetTop() >= 4 {
-			arg4 := L.Get(4)
-			tbl, ok := arg4.(*lua.LTable)
-			if !ok {
-				L.RaiseError("graphics.draw_image: 4th argument must be a table with draw options")
-				return 0
-			}
-
-			scaleXVal, _ := getOptionalNumberField(L, tbl, "scale_x", 1)
-			scaleYVal, _ := getOptionalNumberField(L, tbl, "scale_y", 1)
-			scaleX = scaleXVal
-			scaleY = scaleYVal
-
+		if tbl != nil {
 			hasSX := tbl.RawGetString("sx").Type() != lua.LTNil
 			hasSY := tbl.RawGetString("sy").Type() != lua.LTNil
 			hasSW := tbl.RawGetString("sw").Type() != lua.LTNil
@@ -568,10 +657,13 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 					H: float32(sh),
 				}
 
-				dstW = float32(sw)
-				dstH = float32(sh)
+				baseW = float32(sw)
+				baseH = float32(sh)
 			}
 		}
+
+		scaleX := transformOpts.scale.X
+		scaleY := transformOpts.scale.Y
 
 		if scaleX < 0 {
 			flipMode |= sdl.FLIP_HORIZONTAL
@@ -580,21 +672,29 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 			flipMode |= sdl.FLIP_VERTICAL
 		}
 
-		dstW *= float32(math.Abs(float64(scaleX)))
-		dstH *= float32(math.Abs(float64(scaleY)))
+		absScaleX := float32(math.Abs(float64(scaleX)))
+		absScaleY := float32(math.Abs(float64(scaleY)))
+		dstW := baseW * absScaleX
+		dstH := baseH * absScaleY
 
 		if dstW == 0 || dstH == 0 {
 			return 0
 		}
 
+		center := sdl.FPoint{
+			X: transformOpts.origin.X * absScaleX,
+			Y: transformOpts.origin.Y * absScaleY,
+		}
+
 		dst := sdl.FRect{
-			X: x,
-			Y: y,
+			X: x + transformOpts.origin.X - center.X,
+			Y: y + transformOpts.origin.Y - center.Y,
 			W: dstW,
 			H: dstH,
 		}
 
-		err := renderer.RenderTextureRotated(img.texture, src, &dst, 0, nil, flipMode)
+		rotationDeg := transformOpts.rotation * (180.0 / math.Pi)
+		err := renderer.RenderTextureRotated(img.texture, src, &dst, rotationDeg, &center, flipMode)
 		if err != nil {
 			L.RaiseError("graphics.draw_image failed: %v", err)
 			return 0
@@ -620,13 +720,23 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 		}
 
 		opts := parseShapeOptions(L, "graphics.draw_rect", optsArg, true)
+		transformOpts := parseTransformOptions(L, "graphics.draw_rect", optsArg, sdl.FPoint{X: 0, Y: 0})
 
-		rect := sdl.FRect{X: x, Y: y, W: w, H: h}
+		points := []sdl.FPoint{
+			{X: 0, Y: 0},
+			{X: w, Y: 0},
+			{X: w, Y: h},
+			{X: 0, Y: h},
+		}
+		points = transformPoints(points, transformOpts, x, y)
+
 		err := renderWithColor(renderer, opts.color, func() error {
 			if opts.filled {
-				return renderer.RenderFillRect(&rect)
+				vertices := polygonVertices(points, opts.color)
+				indices := polygonIndices(len(points))
+				return renderer.RenderGeometry(nil, vertices, indices)
 			}
-			return renderer.RenderRect(&rect)
+			return drawPolygonOutline(renderer, points, true)
 		})
 		if err != nil {
 			L.RaiseError("graphics.draw_rect failed: %v", err)
@@ -714,6 +824,12 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 			optsArg = L.Get(4)
 		}
 
+		tbl := getOptionalOptionsTable(L, "graphics.draw_circle", optsArg)
+		if tbl != nil && tbl.RawGetString("rotation").Type() != lua.LTNil {
+			L.RaiseError("graphics.draw_circle: opts.rotation is not supported; use graphics.draw_ellipse or graphics.draw_arc")
+			return 0
+		}
+
 		opts := parseShapeOptions(L, "graphics.draw_circle", optsArg, true)
 		segments := parseSegmentsOption(L, "graphics.draw_circle", optsArg, defaultCircleSegments, 3)
 		points := buildEllipsePoints(x, y, r, r, segments)
@@ -752,8 +868,10 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 		}
 
 		opts := parseShapeOptions(L, "graphics.draw_ellipse", optsArg, true)
+		transformOpts := parseTransformOptions(L, "graphics.draw_ellipse", optsArg, sdl.FPoint{X: 0, Y: 0})
 		segments := parseSegmentsOption(L, "graphics.draw_ellipse", optsArg, defaultEllipseSegments, 3)
-		points := buildEllipsePoints(x, y, rx, ry, segments)
+		points := buildEllipsePoints(0, 0, rx, ry, segments)
+		points = transformPoints(points, transformOpts, x, y)
 
 		err := renderWithColor(renderer, opts.color, func() error {
 			if opts.filled {
@@ -790,13 +908,15 @@ func InitGraphics(l *lua.LState, renderer *sdl.Renderer, baseDir string) {
 		}
 
 		opts := parseShapeOptions(L, "graphics.draw_arc", optsArg, true)
+		transformOpts := parseTransformOptions(L, "graphics.draw_arc", optsArg, sdl.FPoint{X: 0, Y: 0})
 		if opts.filled {
 			L.RaiseError("graphics.draw_arc: filled arcs are not supported")
 			return 0
 		}
 
 		segments := parseSegmentsOption(L, "graphics.draw_arc", optsArg, defaultArcSegments, 1)
-		points := buildArcPoints(x, y, r, startAngle, endAngle, segments)
+		points := buildArcPoints(0, 0, r, startAngle, endAngle, segments)
+		points = transformPoints(points, transformOpts, x, y)
 
 		err := renderWithColor(renderer, opts.color, func() error {
 			return drawPolygonOutline(renderer, points, false)

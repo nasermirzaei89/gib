@@ -38,8 +38,9 @@ graphics.draw_image(image, x, y)
 
 graphics.draw_image(image, x, y, {
   sx = 0, sy = 0, sw = 32, sh = 32,
-  scale_x = 1,
-  scale_y = 1,
+  rotation = math.pi / 4,
+  origin = {16, 16},
+  scale = {1, 1},
 })
 ```
 
@@ -48,14 +49,28 @@ Draws image at destination position.
 Options:
 
 - Source rect: `sx`, `sy`, `sw`, `sh`
-- Scaling: `scale_x`, `scale_y` (default `1`)
-- Negative scale mirrors on that axis.
-- `scale_x == 0` or `scale_y == 0` draws nothing.
+- Rotation: `rotation` in radians (default `0`)
+- Origin/pivot: `origin = {x, y}` (default `{0, 0}`)
+- Scale: `scale = {x, y}` (default `{1, 1}`)
+- Negative scale mirrors around the same `origin`.
+- Zero scale on any axis draws nothing.
+
+Transform model:
+
+- Order is `scale -> rotate -> translate`.
+- Scale and rotation both use the same `origin` pivot.
+- `x, y` remain destination top-left coordinates for untransformed drawing.
 
 Validation behavior:
 
 - If any source key is present, all `sx/sy/sw/sh` are required.
 - Source rect must be in bounds and use integer values.
+- `rotation` must be a number.
+- `origin` and `scale` must be `{x, y}` arrays with exactly 2 numeric values.
+
+Breaking change:
+
+- `scale_x` and `scale_y` options are removed. Use `scale = {x, y}`.
 
 ## draw_rect(x, y, w, h, opts?)
 
@@ -65,6 +80,9 @@ graphics.draw_rect(50, 50, 120, 80)
 graphics.draw_rect(50, 50, 120, 80, {
   color = {0.2, 0.7, 1.0, 1.0},
   filled = true,
+  rotation = math.pi / 8,
+  origin = {60, 40},
+  scale = {1, 1},
 })
 ```
 
@@ -77,11 +95,17 @@ Options:
 
 - `color = {r, g, b, a}` where each value is in `[0, 1]`.
 - `filled` boolean (default `false`).
+- `rotation` in radians (default `0`).
+- `origin = {x, y}` pivot in rect-local space (default `{0, 0}`).
+- `scale = {x, y}` (default `{1, 1}`).
+- Negative scale mirrors around `origin`.
 
 Validation behavior:
 
 - `w` and `h` must be `> 0`.
 - If provided, `color` must contain exactly 4 numeric values in `[0, 1]`.
+- `rotation` must be a number.
+- `origin` and `scale` must be `{x, y}` arrays with exactly 2 numeric values.
 
 ## draw_line(x1, y1, x2, y2, opts?)
 
@@ -169,6 +193,7 @@ Validation behavior:
 - `r` must be `> 0`.
 - If provided, `color` must contain exactly 4 numeric values in `[0, 1]`.
 - If provided, `segments` must be an integer `>= 3`.
+- `opts.rotation` is rejected for circles; use `draw_ellipse` or `draw_arc`.
 
 ## draw_ellipse(x, y, rx, ry, opts?)
 
@@ -179,6 +204,8 @@ graphics.draw_ellipse(520, 500, 56, 28, {
   color = {1.0, 0.5, 0.2, 1.0},
   filled = true,
   segments = 56,
+  rotation = math.pi / 6,
+  scale = {1, 1},
 })
 ```
 
@@ -189,12 +216,17 @@ Options:
 - `color = {r, g, b, a}` where each value is in `[0, 1]`.
 - `filled` boolean (default `false`).
 - `segments` integer (default `48`, minimum `3`) controlling smoothness.
+- `rotation` in radians (default `0`).
+- `origin = {x, y}` pivot in ellipse-local space (default `{0, 0}` center).
+- `scale = {x, y}` (default `{1, 1}`).
 
 Validation behavior:
 
 - `rx` and `ry` must be `> 0`.
 - If provided, `color` must contain exactly 4 numeric values in `[0, 1]`.
 - If provided, `segments` must be an integer `>= 3`.
+- `rotation` must be a number.
+- `origin` and `scale` must be `{x, y}` arrays with exactly 2 numeric values.
 
 ## draw_arc(x, y, r, start_angle, end_angle, opts?)
 
@@ -204,6 +236,8 @@ graphics.draw_arc(680, 500, 44, 0.0, math.pi * 1.5)
 graphics.draw_arc(680, 500, 32, math.pi * 1.25, math.pi * 0.5, {
   color = {1.0, 0.3, 0.4, 1.0},
   segments = 24,
+  rotation = math.pi / 4,
+  scale = {1, 1},
 })
 ```
 
@@ -218,6 +252,9 @@ Options:
 
 - `color = {r, g, b, a}` where each value is in `[0, 1]`.
 - `segments` integer (default `32`, minimum `1`) controlling smoothness.
+- `rotation` in radians (default `0`).
+- `origin = {x, y}` pivot in arc-local space (default `{0, 0}` center).
+- `scale = {x, y}` (default `{1, 1}`).
 
 Validation behavior:
 
@@ -225,6 +262,15 @@ Validation behavior:
 - Filled arcs are currently unsupported.
 - If provided, `color` must contain exactly 4 numeric values in `[0, 1]`.
 - If provided, `segments` must be an integer `>= 1`.
+- `rotation` must be a number.
+- `origin` and `scale` must be `{x, y}` arrays with exactly 2 numeric values.
+
+## Transform Notes
+
+- Rotation uses radians.
+- No global transform state is used.
+- `draw_circle` does not support `opts.rotation`; use `draw_ellipse` or `draw_arc` for rotated round shapes.
+- `draw_polygon` transform options are planned separately.
 
 ## TBD
 

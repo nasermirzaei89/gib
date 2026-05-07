@@ -173,11 +173,25 @@ Explicit per-frame clear color control.
 
 ### Image Transforms
 
-Additional `graphics.draw_image` options:
+Unified transform options are now available through `opts` for:
+
+- `graphics.draw_image`
+- `graphics.draw_rect`
+- `graphics.draw_ellipse`
+- `graphics.draw_arc`
+
+Transform fields:
 
 - rotation
 - origin/pivot
-- flipping/mirroring
+- scale (including mirroring with negative scale)
+
+Notes:
+
+- Rotation uses radians.
+- Scale and rotation share one pivot (`origin`).
+- Transform order is `scale -> rotate -> translate`.
+- `draw_polygon` transform support is deferred to a follow-up phase.
 
 ### Camera and Viewport Helpers
 

@@ -21,6 +21,18 @@ Shows primitive shape rendering using:
 - `graphics.draw_rect`
 - `graphics.draw_line`
 
+## transforms
+
+Path: `examples/transforms/main.lua`
+
+Shows per-draw transform options with:
+
+- `rotation` (radians)
+- `origin = {x, y}`
+- `scale = {x, y}` including negative-scale mirroring
+
+Includes usage for `draw_image`, `draw_rect`, `draw_ellipse`, and `draw_arc`.
+
 ## animation
 
 Path: `examples/animation/main.lua`
@@ -86,4 +98,3 @@ Controls:
 ## TBD
 
 - Add an example for `is_key_pressed` / `is_key_released` edge-triggered input.
-- Add an example for scaled/mirrored `graphics.draw_image` options.
