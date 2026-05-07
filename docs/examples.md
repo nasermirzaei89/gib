@@ -53,6 +53,17 @@ Path: `examples/events/main.lua`
 
 Shows `game.event(event)` usage and logs each incoming event type.
 
+## config
+
+Path: `examples/config/main.lua`
+
+Shows startup configuration with `game.config(conf)` for:
+
+- window title
+- window size
+- resizable/fullscreen flags
+- fixed tick rate (`conf.tps`)
+
 ## audio
 
 Path: `examples/audio/main.lua`

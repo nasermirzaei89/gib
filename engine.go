@@ -16,23 +16,126 @@ import (
 )
 
 const (
-	tps        = 60.0
-	fixedDelta = 1.0 / tps
+	defaultTPS = 60.0
 )
 
+type startupWindowConfig struct {
+	title      string
+	width      int
+	height     int
+	resizable  bool
+	fullscreen bool
+}
+
+type startupConfig struct {
+	window startupWindowConfig
+	tps    float64
+}
+
+func defaultStartupConfig() startupConfig {
+	return startupConfig{
+		window: startupWindowConfig{
+			title:      "Game",
+			width:      800,
+			height:     600,
+			resizable:  false,
+			fullscreen: false,
+		},
+		tps: defaultTPS,
+	}
+}
+
+func startupConfigToLuaTable(L *lua.LState, cfg startupConfig) *lua.LTable {
+	window := L.NewTable()
+	window.RawSetString("title", lua.LString(cfg.window.title))
+	window.RawSetString("width", lua.LNumber(cfg.window.width))
+	window.RawSetString("height", lua.LNumber(cfg.window.height))
+	window.RawSetString("resizable", lua.LBool(cfg.window.resizable))
+	window.RawSetString("fullscreen", lua.LBool(cfg.window.fullscreen))
+
+	conf := L.NewTable()
+	conf.RawSetString("window", window)
+	conf.RawSetString("tps", lua.LNumber(cfg.tps))
+
+	return conf
+}
+
+func parseStartupConfig(conf *lua.LTable) (startupConfig, error) {
+	cfg := defaultStartupConfig()
+
+	tpsVal := conf.RawGetString("tps")
+	tpsNum, ok := tpsVal.(lua.LNumber)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.tps must be number")
+	}
+	cfg.tps = float64(tpsNum)
+	if cfg.tps <= 0 {
+		return cfg, fmt.Errorf("game.config(conf): conf.tps must be > 0")
+	}
+
+	windowVal := conf.RawGetString("window")
+	windowTable, ok := windowVal.(*lua.LTable)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window must be table")
+	}
+
+	titleVal := windowTable.RawGetString("title")
+	title, ok := titleVal.(lua.LString)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.title must be string")
+	}
+	cfg.window.title = string(title)
+
+	widthVal := windowTable.RawGetString("width")
+	widthNum, ok := widthVal.(lua.LNumber)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.width must be number")
+	}
+	if lua.LNumber(int64(widthNum)) != widthNum {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.width must be integer")
+	}
+	cfg.window.width = int(int64(widthNum))
+	if cfg.window.width <= 0 {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.width must be > 0")
+	}
+
+	heightVal := windowTable.RawGetString("height")
+	heightNum, ok := heightVal.(lua.LNumber)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.height must be number")
+	}
+	if lua.LNumber(int64(heightNum)) != heightNum {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.height must be integer")
+	}
+	cfg.window.height = int(int64(heightNum))
+	if cfg.window.height <= 0 {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.height must be > 0")
+	}
+
+	resizableVal := windowTable.RawGetString("resizable")
+	resizable, ok := resizableVal.(lua.LBool)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.resizable must be boolean")
+	}
+	cfg.window.resizable = bool(resizable)
+
+	fullscreenVal := windowTable.RawGetString("fullscreen")
+	fullscreen, ok := fullscreenVal.(lua.LBool)
+	if !ok {
+		return cfg, fmt.Errorf("game.config(conf): conf.window.fullscreen must be boolean")
+	}
+	cfg.window.fullscreen = bool(fullscreen)
+
+	return cfg, nil
+}
+
 func Run() error {
-	L := lua.NewState()
-	defer L.Close()
-
-	gameTable := L.NewTable()
-	L.SetGlobal("game", gameTable)
-
 	var (
-		scriptPath   string
-		baseDir      string
-		scriptLoaded bool
+		scriptPath string
+		baseDir    string
 	)
 
+	// load lua script from args
 	if len(os.Args) <= 1 {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -54,15 +157,15 @@ func Run() error {
 			scriptPath = candidate
 		}
 	} else {
-		arg := os.Args[1]
-		absArg, err := filepath.Abs(arg)
+		arg1 := os.Args[1]
+		absArg, err := filepath.Abs(arg1)
 		if err != nil {
-			return fmt.Errorf("failed to get absolute path for %q: %w", arg, err)
+			return fmt.Errorf("failed to get absolute path for %q: %w", arg1, err)
 		}
 
 		info, err := os.Stat(absArg)
 		if err != nil {
-			return fmt.Errorf("failed to resolve path %q: %w", arg, err)
+			return fmt.Errorf("failed to resolve path %q: %w", arg1, err)
 		}
 
 		if info.IsDir() {
@@ -71,7 +174,7 @@ func Run() error {
 			candidateInfo, err := os.Stat(candidate)
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("directory %q does not contain main.lua (%s)", arg, candidate)
+					return fmt.Errorf("directory %q does not contain main.lua (%s)", arg1, candidate)
 				}
 				return fmt.Errorf("failed to stat %q: %w", candidate, err)
 			}
@@ -83,7 +186,7 @@ func Run() error {
 			scriptPath = candidate
 		} else {
 			if !strings.EqualFold(filepath.Ext(absArg), ".lua") {
-				return fmt.Errorf("only .lua files are supported, got %q", arg)
+				return fmt.Errorf("only .lua files are supported, got %q", arg1)
 			}
 
 			baseDir = filepath.Dir(absArg)
@@ -91,19 +194,52 @@ func Run() error {
 		}
 	}
 
+	L := lua.NewState()
+	defer L.Close()
+
+	gameTable := L.NewTable()
+	L.SetGlobal("game", gameTable)
+	conf := startupConfigToLuaTable(L, defaultStartupConfig())
+
 	if scriptPath != "" {
 		err := L.DoFile(scriptPath)
 		if err != nil {
 			return fmt.Errorf("failed to load Lua file %q: %w", scriptPath, err)
 		}
-		scriptLoaded = true
+	}
+
+	globalGame := L.GetGlobal("game")
+	tbl, ok := globalGame.(*lua.LTable)
+	if !ok {
+		return fmt.Errorf("global game must be a table")
+	}
+	gameTable = tbl
+
+	configFn := gameTable.RawGetString("config")
+	if configFn.Type() != lua.LTNil && configFn.Type() != lua.LTFunction {
+		return fmt.Errorf("no game.config(conf) found")
+	}
+	if configFn.Type() == lua.LTFunction {
+		err := L.CallByParam(lua.P{
+			Fn:      configFn,
+			NRet:    0,
+			Protect: true,
+		}, conf)
+		if err != nil {
+			return fmt.Errorf("failed to call game.config(conf): %w", err)
+		}
+	}
+
+	startupCfg, err := parseStartupConfig(conf)
+	if err != nil {
+		return err
 	}
 
 	defer binsdl.Load().Unload() // sdl.LoadLibrary(sdl.Path())
 	defer binmix.Load().Unload()
 	defer sdl.Quit()
 
-	err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
+	err = sdl.Init(sdl.INIT_VIDEO | sdl.INIT_AUDIO)
 	if err != nil {
 		return fmt.Errorf("failed to initialize SDL: %w", err)
 	}
@@ -120,9 +256,26 @@ func Run() error {
 	}
 	defer audioMixer.Destroy()
 
-	window, renderer, err := sdl.CreateWindowAndRenderer("Game", 800, 600, 0)
+	var windowFlags sdl.WindowFlags
+	if startupCfg.window.resizable {
+		windowFlags |= sdl.WINDOW_RESIZABLE
+	}
+
+	window, renderer, err := sdl.CreateWindowAndRenderer(
+		startupCfg.window.title,
+		startupCfg.window.width,
+		startupCfg.window.height,
+		windowFlags,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create window and renderer: %w", err)
+	}
+
+	if startupCfg.window.fullscreen {
+		err = window.SetFullscreen(true)
+		if err != nil {
+			return fmt.Errorf("failed to set fullscreen on startup: %w", err)
+		}
 	}
 
 	err = renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
@@ -130,46 +283,29 @@ func Run() error {
 		return fmt.Errorf("failed to set renderer draw blend mode: %w", err)
 	}
 
-	var game *lua.LTable
-	if scriptLoaded {
-		ret := L.Get(-1)
-		if tbl, ok := ret.(*lua.LTable); ok {
-			game = tbl
-		}
-	}
-
-	if game == nil {
-		g := L.GetGlobal("game")
-		if tbl, ok := g.(*lua.LTable); ok {
-			game = tbl
-		} else {
-			return fmt.Errorf("no game table found")
-		}
-	}
-
-	loadFn := game.RawGetString("load")
+	loadFn := gameTable.RawGetString("load")
 	if loadFn.Type() != lua.LTNil && loadFn.Type() != lua.LTFunction {
 		return fmt.Errorf("no game.load() found")
 	}
 
-	fixedUpdateFn := game.RawGetString("fixed_update")
+	fixedUpdateFn := gameTable.RawGetString("fixed_update")
 	if fixedUpdateFn.Type() != lua.LTNil && fixedUpdateFn.Type() != lua.LTFunction {
 		return fmt.Errorf("no game.fixed_update(dt) found")
 	}
 
-	updateFn := game.RawGetString("update")
+	updateFn := gameTable.RawGetString("update")
 	if updateFn.Type() != lua.LTNil && updateFn.Type() != lua.LTFunction {
 		return fmt.Errorf("no game.update(dt) found")
 	}
 
-	renderFn := game.RawGetString("render")
+	renderFn := gameTable.RawGetString("render")
 	if renderFn.Type() != lua.LTNil && renderFn.Type() != lua.LTFunction {
 		return fmt.Errorf("no game.render() found")
 	}
 
-	eventFn := game.RawGetString("event")
+	eventFn := gameTable.RawGetString("event")
 	if eventFn.Type() != lua.LTNil && eventFn.Type() != lua.LTFunction {
-		return fmt.Errorf("no game.event() found")
+		return fmt.Errorf("no game.event(e) found")
 	}
 
 	InitDebug(L, renderer)
@@ -187,6 +323,7 @@ func Run() error {
 
 	renderer.SetDrawColor(255, 255, 255, 255)
 
+	fixedDelta := 1.0 / startupCfg.tps
 	last := sdl.TicksNS()
 	var accumulator float64
 

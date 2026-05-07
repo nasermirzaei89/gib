@@ -37,6 +37,19 @@ function game.render()
 end
 ```
 
+Optional startup config:
+
+```lua
+function game.config(conf)
+    conf.window.width = 1280
+    conf.window.height = 720
+    conf.window.title = "My Game"
+    conf.window.resizable = true
+    conf.window.fullscreen = false
+    conf.tps = 60
+end
+```
+
 Run it:
 
 ```bash

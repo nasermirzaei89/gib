@@ -257,7 +257,7 @@ func ellipsePoint(cx, cy, rx, ry float32, angle float64) sdl.FPoint {
 
 func buildEllipsePoints(cx, cy, rx, ry float32, segments int) []sdl.FPoint {
 	points := make([]sdl.FPoint, 0, segments)
-	for i := 0; i < segments; i++ {
+	for i := range segments {
 		angle := 2 * math.Pi * float64(i) / float64(segments)
 		points = append(points, ellipsePoint(cx, cy, rx, ry, angle))
 	}
@@ -350,7 +350,7 @@ func isConvexPolygon(points []sdl.FPoint) bool {
 	hasNegative := false
 	const epsilon = 1e-6
 
-	for i := 0; i < len(points); i++ {
+	for i := range points {
 		a := points[i]
 		b := points[(i+1)%len(points)]
 		c := points[(i+2)%len(points)]

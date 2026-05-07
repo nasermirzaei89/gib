@@ -2,6 +2,37 @@
 
 The engine creates a global `game` table and calls callbacks if present.
 
+## Startup Callback
+
+Before SDL initialization, the engine calls `game.config(conf)` if present.
+
+```lua
+function game.config(conf)
+    conf.window.width = 1280
+    conf.window.height = 720
+    conf.window.title = "My Game"
+    conf.window.resizable = true
+    conf.window.fullscreen = false
+    conf.tps = 60
+end
+```
+
+`conf` defaults:
+
+- `conf.window.title = "Game"`
+- `conf.window.width = 800`
+- `conf.window.height = 600`
+- `conf.window.resizable = false`
+- `conf.window.fullscreen = false`
+- `conf.tps = 60`
+
+Validation rules:
+
+- `conf.tps` must be a number greater than 0.
+- `conf.window.width` and `conf.window.height` must be positive integers.
+- `conf.window.title` must be a string (empty string allowed).
+- `conf.window.resizable` and `conf.window.fullscreen` must be booleans.
+
 ## Callback Order Per Frame
 
 1. Poll and process events.
@@ -13,6 +44,7 @@ The engine creates a global `game` table and calls callbacks if present.
 ## Supported Callbacks
 
 ```lua
+function game.config(conf) end
 function game.load() end
 function game.fixed_update(fixed_dt) end
 function game.update(dt) end
