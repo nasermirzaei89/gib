@@ -35,21 +35,12 @@ The CLI should remain small and workflow-oriented.
 
 ```bash
 gib run [game-dir]
-gib serve [game-dir]
 gib build [game-dir] --target <web|windows|macos|linux>
 ````
 
 #### `gib run`
 
 Run games locally for desktop iteration.
-
-#### `gib serve`
-
-Browser development mode with:
-
-- local web server
-- rebuild/watch support
-- automatic browser launch
 
 #### `gib build`
 

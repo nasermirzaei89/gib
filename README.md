@@ -7,14 +7,14 @@ A Lua-driven 2D game engine prototype built with Go and SDL3.
 Run from project root:
 
 ```bash
-go run cmd/engine/main.go
+go run cmd/gib/main.go help
 ```
 
 Run a specific script or example:
 
 ```bash
-go run cmd/engine/main.go ./examples/hello-world
-go run cmd/engine/main.go ./examples/render-image/main.lua
+go run cmd/gib/main.go run ./examples/hello-world
+go run cmd/gib/main.go run ./examples/render-image/main.lua
 ```
 
 Build binary:

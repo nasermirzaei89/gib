@@ -206,69 +206,68 @@ func parseStartupConfig(conf *lua.LTable) (startupConfig, error) {
 	return cfg, nil
 }
 
-func Run() error {
-	var (
-		scriptPath string
-		baseDir    string
-	)
-
-	// load lua script from args
-	if len(os.Args) <= 1 {
+func resolveRunTarget(target string) (string, string, error) {
+	if target == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return fmt.Errorf("failed to get current directory: %w", err)
+			return "", "", fmt.Errorf("failed to get current directory: %w", err)
 		}
 
-		baseDir = cwd
 		candidate := filepath.Join(cwd, "main.lua")
 		info, err := os.Stat(candidate)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("failed to stat %q: %w", candidate, err)
-			}
-		} else {
-			if info.IsDir() {
-				return fmt.Errorf("expected %q to be a file", candidate)
+				return "", "", fmt.Errorf("failed to stat %q: %w", candidate, err)
 			}
 
-			scriptPath = candidate
-		}
-	} else {
-		arg1 := os.Args[1]
-		absArg, err := filepath.Abs(arg1)
-		if err != nil {
-			return fmt.Errorf("failed to get absolute path for %q: %w", arg1, err)
-		}
-
-		info, err := os.Stat(absArg)
-		if err != nil {
-			return fmt.Errorf("failed to resolve path %q: %w", arg1, err)
+			return "", cwd, nil
 		}
 
 		if info.IsDir() {
-			baseDir = absArg
-			candidate := filepath.Join(absArg, "main.lua")
-			candidateInfo, err := os.Stat(candidate)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("directory %q does not contain main.lua (%s)", arg1, candidate)
-				}
-				return fmt.Errorf("failed to stat %q: %w", candidate, err)
-			}
-
-			if candidateInfo.IsDir() {
-				return fmt.Errorf("expected %q to be a file", candidate)
-			}
-
-			scriptPath = candidate
-		} else {
-			if !strings.EqualFold(filepath.Ext(absArg), ".lua") {
-				return fmt.Errorf("only .lua files are supported, got %q", arg1)
-			}
-
-			baseDir = filepath.Dir(absArg)
-			scriptPath = absArg
+			return "", "", fmt.Errorf("expected %q to be a file", candidate)
 		}
+
+		return candidate, cwd, nil
+	}
+
+	absArg, err := filepath.Abs(target)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get absolute path for %q: %w", target, err)
+	}
+
+	info, err := os.Stat(absArg)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve path %q: %w", target, err)
+	}
+
+	if info.IsDir() {
+		candidate := filepath.Join(absArg, "main.lua")
+		candidateInfo, err := os.Stat(candidate)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return "", "", fmt.Errorf("directory %q does not contain main.lua (%s)", target, candidate)
+			}
+			return "", "", fmt.Errorf("failed to stat %q: %w", candidate, err)
+		}
+
+		if candidateInfo.IsDir() {
+			return "", "", fmt.Errorf("expected %q to be a file", candidate)
+		}
+
+		return candidate, absArg, nil
+	}
+
+	if !strings.EqualFold(filepath.Ext(absArg), ".lua") {
+		return "", "", fmt.Errorf("only .lua files are supported, got %q", target)
+	}
+
+	return absArg, filepath.Dir(absArg), nil
+}
+
+func RunGame(target string) error {
+	scriptPath, baseDir, err := resolveRunTarget(target)
+	if err != nil {
+		return err
 	}
 
 	L := lua.NewState()

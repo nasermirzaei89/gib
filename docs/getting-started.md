@@ -10,16 +10,17 @@
 From the project root:
 
 ```bash
-go run cmd/gib/main.go
+go run cmd/gib/main.go help
 ```
 
 Behavior:
 
-- No argument: engine looks for `./main.lua` in current directory.
-- Argument is a `.lua` file: runs that file.
-- Argument is a folder: runs `<folder>/main.lua`.
+- `help`: prints CLI usage.
+- `run` with no path: engine looks for `./main.lua` in current directory.
+- `run <file.lua>`: runs that file.
+- `run <folder>`: runs `<folder>/main.lua`.
 
-If no-arg mode does not find `main.lua`, the engine starts an empty window.
+If `run` with no path does not find `main.lua`, the engine starts an empty window.
 
 ## Build Binary
 
@@ -55,7 +56,7 @@ end
 Run it:
 
 ```bash
-go run cmd/gib/main.go ./path/to/main.lua
+go run cmd/gib/main.go run ./path/to/main.lua
 ```
 
 ## Next
