@@ -102,6 +102,23 @@ func canonicalKeyNameFromScancode(scancode sdl.Scancode) string {
 	return name
 }
 
+func canonicalMouseButtonName(button uint8) string {
+	switch button {
+	case uint8(sdl.BUTTON_LEFT):
+		return "left"
+	case uint8(sdl.BUTTON_MIDDLE):
+		return "middle"
+	case uint8(sdl.BUTTON_RIGHT):
+		return "right"
+	case uint8(sdl.BUTTON_X1):
+		return "x1"
+	case uint8(sdl.BUTTON_X2):
+		return "x2"
+	default:
+		return "unknown"
+	}
+}
+
 func (s *inputState) resolveScancode(name string) (sdl.Scancode, error) {
 	normalized := normalizeKeyName(name)
 	if normalized == "" {

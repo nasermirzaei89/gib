@@ -101,7 +101,7 @@ These systems unlock a large amount of gameplay and UI functionality.
 
 Richer `game.event(event)` payloads:
 
-- key/scancode data
+- canonical key data
 - mouse position/delta/button data
 - wheel deltas
 - window events

@@ -11,7 +11,7 @@ Loads an audio asset and returns asset userdata.
 
 Notes:
 
-- Supports at least WAV and OGG through SDL_mixer.
+- Supports at least WAV and OGG.
 - Relative paths are resolved from the script base directory.
 
 ## unload(asset)

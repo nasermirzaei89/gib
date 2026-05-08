@@ -4,7 +4,7 @@ The engine creates a global `game` table and calls callbacks if present.
 
 ## Startup Callback
 
-Before SDL initialization, the engine calls `game.config(conf)` if present.
+Before initialization, the engine calls `game.config(conf)` if present.
 
 ```lua
 function game.config(conf)
@@ -66,15 +66,12 @@ All callbacks are optional.
 - Fixed tick rate: 60 TPS (`fixed_dt = 1/60`).
 - Variable update `dt`: real elapsed seconds for current frame.
 
-## Event Payload Today
+## Event Payload
 
-`game.event(event)` currently receives:
+`game.event(event)` receives `event.type` plus event-specific fields.
 
-- `event.type` (string)
-
-See [Events](events.md) for mapped names.
+See [Events](events.md) for the full payload contract.
 
 ## TBD
 
-- Event payload fields beyond `event.type` (key code, mouse position, etc.) are not exposed yet.
 - Pause/time-scale control is not implemented yet.

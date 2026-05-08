@@ -465,11 +465,14 @@ func RunGame(target string) error {
 				eventTable.RawSetString("type", lua.LString(eventTypeString(event.Type)))
 
 				switch event.Type {
-				case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
+				case sdl.EVENT_KEY_DOWN:
 					if keyboardEvent := event.KeyboardEvent(); keyboardEvent != nil {
 						eventTable.RawSetString("key", lua.LString(canonicalKeyNameFromScancode(keyboardEvent.Scancode)))
-						eventTable.RawSetString("scancode", lua.LNumber(keyboardEvent.Scancode))
 						eventTable.RawSetString("is_repeat", lua.LBool(keyboardEvent.Repeat))
+					}
+				case sdl.EVENT_KEY_UP:
+					if keyboardEvent := event.KeyboardEvent(); keyboardEvent != nil {
+						eventTable.RawSetString("key", lua.LString(canonicalKeyNameFromScancode(keyboardEvent.Scancode)))
 					}
 				case sdl.EVENT_MOUSE_MOTION:
 					if mouseMotionEvent := event.MouseMotionEvent(); mouseMotionEvent != nil {
@@ -480,7 +483,7 @@ func RunGame(target string) error {
 					}
 				case sdl.EVENT_MOUSE_BUTTON_DOWN, sdl.EVENT_MOUSE_BUTTON_UP:
 					if mouseButtonEvent := event.MouseButtonEvent(); mouseButtonEvent != nil {
-						eventTable.RawSetString("button", lua.LNumber(mouseButtonEvent.Button))
+						eventTable.RawSetString("button", lua.LString(canonicalMouseButtonName(mouseButtonEvent.Button)))
 						eventTable.RawSetString("clicks", lua.LNumber(mouseButtonEvent.Clicks))
 						eventTable.RawSetString("x", lua.LNumber(mouseButtonEvent.X))
 						eventTable.RawSetString("y", lua.LNumber(mouseButtonEvent.Y))
