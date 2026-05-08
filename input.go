@@ -77,6 +77,31 @@ func normalizeKeyName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }
 
+func canonicalKeyNameFromScancode(scancode sdl.Scancode) string {
+	switch scancode {
+	case sdl.SCANCODE_RETURN:
+		return "enter"
+	case sdl.SCANCODE_ESCAPE:
+		return "escape"
+	case sdl.SCANCODE_LSHIFT:
+		return "left_shift"
+	case sdl.SCANCODE_RSHIFT:
+		return "right_shift"
+	case sdl.SCANCODE_LCTRL:
+		return "left_ctrl"
+	case sdl.SCANCODE_RCTRL:
+		return "right_ctrl"
+	case sdl.SCANCODE_LALT:
+		return "left_alt"
+	case sdl.SCANCODE_RALT:
+		return "right_alt"
+	}
+
+	name := normalizeKeyName(scancode.Name())
+	name = strings.ReplaceAll(name, " ", "_")
+	return name
+}
+
 func (s *inputState) resolveScancode(name string) (sdl.Scancode, error) {
 	normalized := normalizeKeyName(name)
 	if normalized == "" {

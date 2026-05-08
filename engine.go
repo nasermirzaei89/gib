@@ -464,6 +464,36 @@ func RunGame(target string) error {
 				eventTable := L.NewTable()
 				eventTable.RawSetString("type", lua.LString(eventTypeString(event.Type)))
 
+				switch event.Type {
+				case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
+					if keyboardEvent := event.KeyboardEvent(); keyboardEvent != nil {
+						eventTable.RawSetString("key", lua.LString(canonicalKeyNameFromScancode(keyboardEvent.Scancode)))
+						eventTable.RawSetString("scancode", lua.LNumber(keyboardEvent.Scancode))
+						eventTable.RawSetString("is_repeat", lua.LBool(keyboardEvent.Repeat))
+					}
+				case sdl.EVENT_MOUSE_MOTION:
+					if mouseMotionEvent := event.MouseMotionEvent(); mouseMotionEvent != nil {
+						eventTable.RawSetString("x", lua.LNumber(mouseMotionEvent.X))
+						eventTable.RawSetString("y", lua.LNumber(mouseMotionEvent.Y))
+						eventTable.RawSetString("dx", lua.LNumber(mouseMotionEvent.Xrel))
+						eventTable.RawSetString("dy", lua.LNumber(mouseMotionEvent.Yrel))
+					}
+				case sdl.EVENT_MOUSE_BUTTON_DOWN, sdl.EVENT_MOUSE_BUTTON_UP:
+					if mouseButtonEvent := event.MouseButtonEvent(); mouseButtonEvent != nil {
+						eventTable.RawSetString("button", lua.LNumber(mouseButtonEvent.Button))
+						eventTable.RawSetString("clicks", lua.LNumber(mouseButtonEvent.Clicks))
+						eventTable.RawSetString("x", lua.LNumber(mouseButtonEvent.X))
+						eventTable.RawSetString("y", lua.LNumber(mouseButtonEvent.Y))
+					}
+				case sdl.EVENT_MOUSE_WHEEL:
+					if mouseWheelEvent := event.MouseWheelEvent(); mouseWheelEvent != nil {
+						eventTable.RawSetString("x", lua.LNumber(mouseWheelEvent.X))
+						eventTable.RawSetString("y", lua.LNumber(mouseWheelEvent.Y))
+						eventTable.RawSetString("mouse_x", lua.LNumber(mouseWheelEvent.MouseX))
+						eventTable.RawSetString("mouse_y", lua.LNumber(mouseWheelEvent.MouseY))
+					}
+				}
+
 				err := L.CallByParam(lua.P{
 					Fn:      eventFn,
 					NRet:    0,

@@ -10,11 +10,42 @@ end
 
 ## Payload
 
-Currently exposed fields:
+Common fields:
 
 - `event.type`
 
-No other event metadata is exposed yet.
+Event-specific fields:
+
+- `key_down`
+  - `event.key`: key name in GIB canonical format (examples: `left`, `enter`, `left_shift`, `a`)
+  - `event.scancode`: SDL scancode numeric value
+  - `event.is_repeat`: `true` when the key-down is an OS key-repeat event
+- `key_up`
+  - `event.key`: key name in GIB canonical format (examples: `left`, `enter`, `left_shift`, `a`)
+  - `event.scancode`: SDL scancode numeric value
+  - `event.is_repeat`: repeat flag from SDL (typically `false` on key-up)
+- `mouse_motion`
+  - `event.x`: mouse x position in window coordinates
+  - `event.y`: mouse y position in window coordinates
+  - `event.dx`: relative x motion since previous mouse motion event
+  - `event.dy`: relative y motion since previous mouse motion event
+- `mouse_button_down`
+  - `event.button`: SDL mouse button index
+  - `event.clicks`: click count (1 for single click, 2 for double click)
+  - `event.x`: mouse x position in window coordinates
+  - `event.y`: mouse y position in window coordinates
+- `mouse_button_up`
+  - `event.button`: SDL mouse button index
+  - `event.clicks`: click count (usually 1)
+  - `event.x`: mouse x position in window coordinates
+  - `event.y`: mouse y position in window coordinates
+- `mouse_wheel`
+  - `event.x`: horizontal wheel delta (positive is right)
+  - `event.y`: vertical wheel delta (positive is away from user)
+  - `event.mouse_x`: mouse x position in window coordinates during wheel event
+  - `event.mouse_y`: mouse y position in window coordinates during wheel event
+
+Other event metadata is intentionally not exposed yet.
 
 ## Event Name Examples
 
@@ -31,5 +62,5 @@ For the full current mapping, see source in `event.go`.
 
 ## TBD
 
-- Expose detailed event fields (`key`, `scancode`, mouse coordinates, wheel deltas).
+- Expose detailed fields for more non-keyboard and non-mouse event types.
 - Add optional event filtering helpers.
